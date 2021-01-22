@@ -72,16 +72,15 @@ def parse_packet(packet:Packet):
     dst_p = dst + "/" + str(packet[TCP].dport)
 
     ttl = packet[IP].ttl
+    ttl = 2**(ttl-1).bit_length()
     wsize = packet[TCP].window
 
     flags = packet[TCP].flags
     flags = [flags_dict[key] for key in list(flags_dict.keys()) if key & flags]
-    #if "SYN" in flags:
         
     output.append(f".-[ {src_p} -> {dst_p} ({', '.join(flags)}) ]-")
     output.append(cool_print(['server', 'client'][src==LOCAL_IP], src_p))
 
-    #print(dir(packet[TCP]))
     if src in IP_OS.keys() and IP_OS.get(src) != None:
         output.append(cool_print("os\t", IP_OS.get(src)))
     elif "SYN" in flags:
