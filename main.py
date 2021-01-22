@@ -41,6 +41,7 @@ OS_TABLE = {
 
 IP_OS = {}
 
+TTL_OPTIONS = (60,30,64,128,255,32)
 
 def expand(x):
     yield x
@@ -72,7 +73,9 @@ def parse_packet(packet:Packet):
     dst_p = dst + "/" + str(packet[TCP].dport)
 
     ttl = packet[IP].ttl
-    ttl = 2**(ttl-1).bit_length()
+    output.append("before:" + str(ttl))
+    ttl = min([t for t in TTL_OPTIONS if t >= ttl])
+    output.append("after:" + str(ttl))
     wsize = packet[TCP].window
 
     flags = packet[TCP].flags
@@ -97,15 +100,12 @@ def parse_packet(packet:Packet):
             output.append(cool_print("os\t", OS_TABLE.get((ttl, wsize))))
 
     
-
-
     if packet[TCP].dport == 80:
-        
         payload = str(bytes(packet[TCP].payload))
         user_agent_unsplitted = payload[payload.find("User-Agent"):payload.find("\\r\\n", payload.find("User-Agent"))]
         user_agent = user_agent_unsplitted.split()[1:]
         if user_agent != []:
-            output.append("| <-------------->Data From HTTP<-------------->")
+            output.append("| <--------------> Data From HTTP <-------------->")
             if len(user_agent) >= 2:
                 browsers = user_agent_unsplitted.split(")")[-1].split()
                 if len(browsers) == 2:
@@ -116,7 +116,7 @@ def parse_packet(packet:Packet):
                     if "Chrome" in browsers[0] and "Safari" in browsers[1]:
                         output.append(cool_print('Browser', f'{browsers[0].split("/")[0]}, Version {browsers[0].split("/")[1]}'))
                     if browsers == ["like", "Gecko"]:
-                        output.append(cool_print("Browser", f"Internet Explorer, Version: 11"))
+                        output.append(cool_print("Browser", "Internet Explorer, Version: 11"))
                 elif len(browsers) == 3:
                     if "Version" in browsers[0]:
                         output.append(cool_print('Browser', f'{browsers[2].split("/")[0]} on Mobile, Version {browsers[0].split("/")[1]}'))
