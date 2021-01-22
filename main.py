@@ -72,7 +72,6 @@ def parse_packet(packet:Packet):
     dst_p = dst + "/" + str(packet[TCP].dport)
 
     ttl = packet[IP].ttl
-    ttl = 2**(ttl-1).bit_length()
     wsize = packet[TCP].window
 
     flags = packet[TCP].flags
