@@ -79,13 +79,18 @@ def parse_packet(packet:Packet):
                         print(f'Browser: {browsers[2].split("/")[0]} on Mobile, Version {browsers[0].split("/")[1]}')
                     else:
                         print(f'Browser: {browsers[2].split("/")[0]}, Version {browsers[2].split("/")[1]}'.replace("Edg", "Edge"))
+
+                # system info
+                system_info = user_agent_unsplitted.split("(")[1].split(")")[0].replace("Windows NT 10.0", "Windows 10").replace("Win64", "64 bit platform")
+                print(system_info)
             else:
-                print(f'Client Agent: {user_agent[0]}')
+                if "/" in user_agent[0]:
+                    print(f'Client Agent: {user_agent[0].split("/")[0]}, Version {user_agent[0].split("/")[1]}')
+                else:
+                    print(f'Client Agent: {user_agent[0]}')
 
 
-            # "system info" ~Yuval "I wrote that comment too" ~Omri
-            system_info = user_agent_unsplitted.split("(")[1].split(")")[0].replace("Windows NT 10.0", "Windows 10").replace("Win64", "64 bit platform")
-            print(system_info)
+            
 
     # src_p = src + "/" + str(packet[TCP].sport)
     # dst_p = dst + "/" + str(packet[TCP].dport)
