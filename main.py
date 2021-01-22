@@ -81,7 +81,7 @@ def parse_packet(packet:Packet):
                         print(f'Browser: {browsers[2].split("/")[0]}, Version {browsers[2].split("/")[1]}'.replace("Edg", "Edge"))
 
                 # system info
-                system_info = user_agent_unsplitted.split("(")[1].split(")")[0].replace("Windows NT 10.0", "Windows 10").replace("Win64", "64 bit platform")
+                system_info = user_agent_unsplitted.split("(")[1].split(")")[0].replace("Windows NT 10.0", "Windows 10").replace("Win64", "64 bit platform").replace("X11; Ubuntu; Linux x86_64", "Ubuntu")
                 print(system_info)
             else:
                 if "/" in user_agent[0]:
