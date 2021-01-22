@@ -107,11 +107,8 @@ def parse_packet(packet:Packet):
         user_agent = user_agent_unsplitted.split()[1:]
         if user_agent != []:
             output.append("| <-------------->Data From HTTP<-------------->")
-            #print(user_agent)
-            #browser detection
             if len(user_agent) >= 2:
                 browsers = user_agent_unsplitted.split(")")[-1].split()
-                #print(browsers)
                 if len(browsers) == 2:
                     if "Version" in browsers[0]:
                         output.append(cool_print('Browser', f'{browsers[1].split("/")[0]}, Version {browsers[0].split("/")[1]}'))
