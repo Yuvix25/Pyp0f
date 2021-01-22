@@ -4,6 +4,17 @@ import time
 import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
+print("""
+    syntax:
+        OR keyword1, keyword2, keyword3... # prints packets with one or more of these keywords
+        AND keyword1, keyword2, keyword3... # prints packets with all of these keywords
+        keyword # entering one keyword
+
+        Example input:    OR http, os
+""")
+
+FILTER_KEYWORD = input("Enter filter keywords, seperated with `, ` (just press enter for no filter): ")
+
 LOCAL_IP = get_if_addr(conf.iface)
 
 flags_dict={
@@ -40,7 +51,7 @@ def expand(x):
 def cool_print(a, b):
     if b == None:
         return
-    print(f"| {a}\t= {b}")
+    return f"| {a}\t= {b}"
 
 def packet_callback(packet:Packet):
     try:
@@ -51,15 +62,51 @@ def packet_callback(packet:Packet):
 def parse_packet(packet:Packet):
     if IP not in packet:
         return
+
+    output = []
+    
     src = packet[IP].src
-    dst = packet[IP].dst
+    dst = packet[IP].dst            
+
+    src_p = src + "/" + str(packet[TCP].sport)
+    dst_p = dst + "/" + str(packet[TCP].dport)
+
+    ttl = packet[IP].ttl
+    wsize = packet[TCP].window
+
+    flags = packet[TCP].flags
+    flags = [flags_dict[key] for key in list(flags_dict.keys()) if key & flags]
+    #if "SYN" in flags:
+        
+    output.append(f".-[ {src_p} -> {dst_p} ({', '.join(flags)}) ]-")
+    output.append(cool_print(['server', 'client'][src==LOCAL_IP], src_p))
+
+    #print(dir(packet[TCP]))
+    if src in IP_OS.keys() and IP_OS.get(src) != None:
+        output.append(cool_print("os\t", IP_OS.get(src)))
+    elif "SYN" in flags:
+        options = packet[TCP].options
+        formatted_options = []
+        for i in options:
+            if i[1] == None or i[1] == b'':
+                continue
+            formatted_options.append(str(i[0]) + ": " + str(i[1]))
+        output.append(cool_print("options", ', '.join(formatted_options)))
+        time.sleep(1)
+        if OS_TABLE.get((ttl, wsize)) != None:
+            IP_OS[src] = OS_TABLE.get((ttl, wsize))
+            output.append(cool_print("os\t", OS_TABLE.get((ttl, wsize))))
+
+    
 
 
     if packet[TCP].dport == 80:
+        
         payload = str(bytes(packet[TCP].payload))
         user_agent_unsplitted = payload[payload.find("User-Agent"):payload.find("\\r\\n", payload.find("User-Agent"))]
         user_agent = user_agent_unsplitted.split()[1:]
         if user_agent != []:
+            output.append("| <-------------->Data From HTTP<-------------->")
             #print(user_agent)
             #browser detection
             if len(user_agent) >= 2:
@@ -67,68 +114,42 @@ def parse_packet(packet:Packet):
                 #print(browsers)
                 if len(browsers) == 2:
                     if "Version" in browsers[0]:
-                        print(f'Browser: {browsers[1].split("/")[0]}, Version {browsers[0].split("/")[1]}')
+                        output.append(cool_print('Browser', f'{browsers[1].split("/")[0]}, Version {browsers[0].split("/")[1]}'))
                     if "Gecko" in browsers[0]:
-                        print(f'Browser: {browsers[1].split("/")[0]}, Version {browsers[1].split("/")[1]}')
+                        output.append(cool_print('Browser', f'{browsers[1].split("/")[0]}, Version {browsers[1].split("/")[1]}'))
                     if "Chrome" in browsers[0] and "Safari" in browsers[1]:
-                        print(f'Browser: {browsers[0].split("/")[0]}, Version {browsers[0].split("/")[1]}')
+                        output.append(cool_print('Browser', f'{browsers[0].split("/")[0]}, Version {browsers[0].split("/")[1]}'))
                     if browsers == ["like", "Gecko"]:
-                        print("Browser: Internet Explorer, Version: 11")
+                        output.append(cool_print("Browser", f"Internet Explorer, Version: 11"))
                 elif len(browsers) == 3:
                     if "Version" in browsers[0]:
-                        print(f'Browser: {browsers[2].split("/")[0]} on Mobile, Version {browsers[0].split("/")[1]}')
+                        output.append(cool_print('Browser', f'{browsers[2].split("/")[0]} on Mobile, Version {browsers[0].split("/")[1]}'))
                     else:
-                        print(f'Browser: {browsers[2].split("/")[0]}, Version {browsers[2].split("/")[1]}'.replace("Edg", "Edge"))
+                        output.append(cool_print('Browser', f'{browsers[2].split("/")[0]}, Version {browsers[2].split("/")[1]}'.replace("Edg", "Edge")))
 
                 # system info
                 system_info = user_agent_unsplitted.split("(")[1].split(")")[0].replace("Windows NT 10.0", "Windows 10").replace("Win64", "64 bit platform").replace("X11; Ubuntu; Linux x86_64", "Ubuntu")
-                print(system_info)
+                output.append(cool_print('System Info', system_info))
             else:
                 if "/" in user_agent[0]:
-                    print(f'Client Agent: {user_agent[0].split("/")[0]}, Version {user_agent[0].split("/")[1]}')
+                    output.append(cool_print('Client Agent', f'{user_agent[0].split("/")[0]}, Version {user_agent[0].split("/")[1]}'))
                 else:
-                    print(f'Client Agent: {user_agent[0]}')
+                    output.append(cool_print('Client Agent', f'{user_agent[0]}'))
 
+    output.append("`....\n")
 
-            
+    output = '\n'.join(output)
 
-    # src_p = src + "/" + str(packet[TCP].sport)
-    # dst_p = dst + "/" + str(packet[TCP].dport)
-
-    # ttl = packet[IP].ttl
-    # wsize = packet[TCP].window
-
-    # flags = packet[TCP].flags
-    # flags = [flags_dict[key] for key in list(flags_dict.keys()) if key & flags]
-    # #if "SYN" in flags:
-        
-    # print(f".-[ {src_p} -> {dst_p} ({', '.join(flags)}) ]-")
-    # cool_print(['server', 'client'][src==LOCAL_IP], src_p)
-    # cool_print("ttl\t", ttl)
-    # cool_print("window size", wsize)
-
-    # #print(dir(packet[TCP]))
-    # if src in IP_OS.keys() and IP_OS.get(src) != None:
-    #     cool_print("os\t", IP_OS.get(src))
-    # elif "SYN" in flags:
-    #     options = packet[TCP].options
-    #     formatted_options = []
-    #     for i in options:
-    #         if i[1] == None or i[1] == b'':
-    #             continue
-    #         formatted_options.append(str(i[0]) + ": " + str(i[1]))
-    #     cool_print("options", ', '.join(formatted_options))
-    #     time.sleep(1)
-    #     if OS_TABLE.get((ttl, wsize)) != None:
-    #         IP_OS[src] = OS_TABLE.get((ttl, wsize))
-    #         cool_print("os\t", OS_TABLE.get((ttl, wsize)))
-
-    # #print(dir(packet[TCP]))
-    # #print(list(expand(packet)))
-    # #print(packet[INET])
-    # #packet.show()
-
-    # print("`....\n")
+    if FILTER_KEYWORD.startswith("OR"):
+        if any([key.lower() in output.lower() for key in FILTER_KEYWORD[3:].split(', ')]):
+            print(output)
+    elif FILTER_KEYWORD.startswith("AND"):
+        if all([key.lower() in output.lower() for key in FILTER_KEYWORD[3:].split(', ')]):
+            print(output)
+    else:
+        if FILTER_KEYWORD.lower() in output.lower():
+            print(output)
+    
     
 print("started")
 sniff(filter="tcp",prn=packet_callback)
