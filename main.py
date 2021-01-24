@@ -1,5 +1,7 @@
-^from scapy.all import *
+from scapy.all import *
 import time
+import requests
+import json
 
 import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
@@ -17,6 +19,16 @@ FILTER_KEYWORD = input("Enter filter keywords, seperated with `, ` (just press e
 
 # get local IP of computer
 LOCAL_IP = get_if_addr(conf.iface)
+# GLOBAL_IP = publicip.get()
+url = f"https://api.ipify.org?format=json"
+
+headers = {
+    'accept': "application/json",
+    'content-type': "application/json"
+}
+
+response = json.loads(requests.request("GET", url, headers=headers).text)
+GLOBAL_IP = response['ip']
 
 
 # flag hex to name
@@ -47,7 +59,7 @@ OS_TABLE = {
 IP_OS = {}
 
 # common ttls (to find out the initial ttl)
-TTL_OPTIONS = (60,30,64,128,255,32)
+TTL_OPTIONS = (32,64,128,255)
 
 # example:  expand([1, 2, [3, [5]]]) -> [1, 2, 3, 5]
 def expand(x):
@@ -88,6 +100,7 @@ def parse_packet(packet:Packet):
 
     # get window size and ttl and find nearest (but higher) initial ttl from the tuple at the start
     ttl = packet[IP].ttl
+    ottl = ttl
     ttl = min([t for t in TTL_OPTIONS if t >= ttl])
     wsize = packet[TCP].window
 
@@ -100,6 +113,37 @@ def parse_packet(packet:Packet):
     # check if is server or client
     output.append(cool_print(['server', 'client'][src==LOCAL_IP], src_p))
 
+    if src == LOCAL_IP:
+        url = f"https://freegeoip.app/json/"
+
+        headers = {
+            'accept': "application/json",
+            'content-type': "application/json"
+            }
+
+        response = json.loads(requests.request("GET", url, headers=headers).text)
+    else:
+        url = f"https://freegeoip.app/json/{src}"
+
+        headers = {
+            'accept': "application/json",
+            'content-type': "application/json"
+            }
+
+        response = json.loads(requests.request("GET", url, headers=headers).text)
+    
+    output.append(cool_print('country', response["country_name"]))
+    if response["region_name"] != '':
+        output.append(cool_print('region', response["region_name"]))
+    if response["city"] != '':
+        output.append(cool_print('city\t', response["city"]))
+    
+
+
+    #output.append(cool_print('original ttl', ottl))
+    output.append(cool_print('initial ttl', str(ttl)+" (guessed)"))
+    output.append(cool_print('hops\t', ttl-ottl))
+
     # if the src is already in the detected os table, print it.
     if src in IP_OS.keys() and IP_OS.get(src) != None:
         output.append(cool_print("os\t", IP_OS.get(src)))
@@ -111,7 +155,7 @@ def parse_packet(packet:Packet):
             if i[1] == None or i[1] == b'':
                 continue
             formatted_options.append(str(i[0]) + ": " + str(i[1]))
-        output.append(cool_print("options", ', '.join(formatted_options)))
+        #output.append(cool_print("options", ', '.join(formatted_options)))
         time.sleep(1)
         if OS_TABLE.get((ttl, wsize)) != None:
             IP_OS[src] = OS_TABLE.get((ttl, wsize))
