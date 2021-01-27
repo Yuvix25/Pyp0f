@@ -124,10 +124,10 @@ class p0f:
 
     # try to parse the packet
     def packet_callback(self, packet:Packet):
-        # try:
+        try:
             self.parse_packet(packet)
-        # except Exception as e:
-        #     print(f"An error occured while analising a packet.")
+        except Exception as e:
+            print(f"An error occured while analising a packet.")
 
     def find_geoip(self, src):
         if src == self.local_ip:
