@@ -130,6 +130,7 @@ class p0f:
             print(f"An error occured while analising a packet.")
 
     def find_geoip(self, src):
+        # call geo ip http server
         if src == self.local_ip:
             url = f"https://freegeoip.app/json/"
 
@@ -200,6 +201,7 @@ class p0f:
             for key in list(self.geoip_table[src].keys()):
                 self.output.append(self.cool_print(key, self.geoip_table[src][key]))
         else:
+            # geo ip is on another thread because it takes some time for the api to find the location.
             find_geo_thread = threading.Thread(target=self.find_geoip, args=(src,))
             find_geo_thread.start()
 
@@ -232,8 +234,8 @@ class p0f:
                 self.output.append(self.cool_print("os\t", self.os_table.get((ttl, wsize))))
 
         # if the packet is sent to an http server we can extract the metadata from the header
-        if packet[TCP].dport == 80 or packet[TCP].sport == 80:
-            payload = str(bytes(packet[TCP].payload))
+        payload = str(bytes(packet[TCP].payload))
+        if "User-Agent" in payload:
             # extracting the "user agent" argument from the header if exist
             user_agent_unsplitted = payload[payload.find("User-Agent"):payload.find("\\r\\n", payload.find("User-Agent"))]
             user_agent = user_agent_unsplitted.split()[1:]
