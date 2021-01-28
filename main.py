@@ -21,6 +21,9 @@ class bcolors:
     Grey = '\033[90m'
     Black = '\033[90m'
     EndC = '\033[0m'
+    Bold = '\033[1m'
+    VioletBG = '\33[45m'
+
 
 class p0f:
     def __init__(self):
@@ -235,7 +238,7 @@ class p0f:
 
 
         #self.output.append(self.cool_print('original ttl', ottl))
-        self.output.append(self.cool_print('initial ttl', str(ttl)+" (guessed)"))
+        self.output.append(self.cool_print('initial ttl', str(ttl) + " (guessed)"))
         self.output.append(self.cool_print('hops\t', ttl-ottl))
         if src in list(self.reverse_dns.keys()):
             self.output.append(self.cool_print('reverse DNS', self.reverse_dns[src]))
@@ -270,8 +273,9 @@ class p0f:
             # add to self.output the browser based on the user agent 
             if user_agent != []:
                 self.output.append("| <--------------> Data From HTTP <-------------->")
-                if len(user_agent) >= 2:
+                if len(user_agent) > 1:
                     browsers = user_agent_unsplitted.split(")")[-1].split()
+                    print(browsers)
 
                     self.output.append(self.cool_print("Browser", str(self.get_browser(browsers))))
 
@@ -281,6 +285,14 @@ class p0f:
                         self.output.append(self.cool_print('System Info', system_info))
                     except:
                         pass
+                else:
+                    if "/" in user_agent[0]:
+                        self.output.append(self.cool_print('Browser', f'{user_agent[0].split("/")[0]}, Version {user_agent[0].split("/")[1]}'))
+                    else:
+                        self.output.append(self.cool_print('Browser', user_agent[0]))
+        
+        if self.output[-1] == "| <--------------> Data From HTTP <-------------->":
+            self.output = self.output[:-1]
 
         self.output.append("`....\n")
         self.output = [line for line in self.output if line != "" and line != None]
@@ -291,18 +303,29 @@ class p0f:
         # apply filtering roles
         if self.filter_keywords.startswith("OR"):
             if any([key.lower() in self.output.lower() for key in self.filter_keywords[3:].split(', ')]):
+                filter_keywords_splitted = self.filter_keywords[3:].split(', ')
                 print_output = True
         elif self.filter_keywords.startswith("AND"):
-            if all([key.lower() in self.output.lower() for key in self.filter_keywords[3:].split(', ')]):
+            if all([key.lower() in self.output.lower() for key in self.filter_keywords[4:].split(', ')]):
+                filter_keywords_splitted = self.filter_keywords[4:].split(', ')
                 print_output = True
         else:
             if self.filter_keywords.lower() in self.output.lower():
+                filter_keywords_splitted = self.filter_keywords.split(', ')
                 print_output = True
 
         if print_output:
+            for keyword in filter_keywords_splitted:
+                if keyword != "":
+                    occs = [i for i in range(len(self.output.lower())) if self.output.lower().startswith(keyword.lower(), i)]
+                    for occ in occs:
+                        self.output = self.output[:occ] + bcolors.VioletBG + bcolors.White + self.output[occ:occ+len(keyword)] + bcolors.EndC + self.output[occ+len(keyword):]
             print(self.output)
         elif self.ignore_filtered:
             self.ip_os = TMP_ip_os.copy()
+
+
+        # f'{str(s)}' when s is a string ~ Yuval 2021
     
 if __name__ ==  "__main__":
     _p0f = p0f()
