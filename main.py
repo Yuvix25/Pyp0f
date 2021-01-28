@@ -2,12 +2,25 @@ import json
 import logging
 import statistics
 import threading
+import socket
 
 import requests
 from scapy import layers
 from scapy.all import *
 
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
+
+class bcolors:
+    Red = '\033[91m'
+    Green = '\033[92m'
+    Blue = '\033[94m'
+    Cyan = '\033[96m'
+    White = '\033[97m'
+    Yellow = '\033[93m'
+    Magenta = '\033[95m'
+    Grey = '\033[90m'
+    Black = '\033[90m'
+    EndC = '\033[0m'
 
 class p0f:
     def __init__(self):
@@ -84,10 +97,14 @@ class p0f:
             },
         }
 
+        # locations table
         self.geoip_table = {}
 
         # detected OSs
         self.ip_os = {}
+
+        # detected reverse DNSs
+        self.reverse_dns = {}
 
         # common ttls (to find out the initial ttl)
         self.ttl_options = (32,64,128,255)
@@ -116,11 +133,17 @@ class p0f:
         except:
             return ""
 
+    def ReverseDNS(self, src):
+        try:
+            self.reverse_dns[src] = socket.gethostbyaddr(src)[0]
+        except:
+            pass
+
     # returns a formatted p0f like text
     def cool_print(self, a, b):
         if b == None or b == "":
             return ""
-        return f"| {a}\t= {b}"
+        return f"| {bcolors.Blue}{a}{bcolors.EndC}\t= {bcolors.Green}{b}{bcolors.EndC}"
 
     # try to parse the packet
     def packet_callback(self, packet:Packet):
@@ -191,8 +214,8 @@ class p0f:
         # find flags and convert them from hex to text
         flags = packet[TCP].flags
         flags = [self.flags_dict[key] for key in list(self.flags_dict.keys()) if key & flags]
-            
-        self.output.append(f".-[ {src_p} -> {dst_p} ({', '.join(flags)}) ]-")
+        
+        self.output.append(f".-[{bcolors.Yellow}{src_p}{bcolors.EndC} -> {bcolors.Yellow}{dst_p}{bcolors.EndC} {bcolors.Magenta}({', '.join(flags)}){bcolors.EndC} ]-")
         # check if is server or client
         self.output.append(self.cool_print(['server', 'client'][src==self.local_ip], src_p))
         self.output.append(self.cool_print("window size", wsize))
@@ -214,6 +237,11 @@ class p0f:
         #self.output.append(self.cool_print('original ttl', ottl))
         self.output.append(self.cool_print('initial ttl', str(ttl)+" (guessed)"))
         self.output.append(self.cool_print('hops\t', ttl-ottl))
+        if src in list(self.reverse_dns.keys()):
+            self.output.append(self.cool_print('reverse DNS', self.reverse_dns[src]))
+        else:
+            reverse_dns_thread = threading.Thread(target=self.ReverseDNS, args=(src,))
+            reverse_dns_thread.start()
 
         # if the src is already in the detected os table, print it.
         if src in self.ip_os.keys() and self.ip_os.get(src) != None:
@@ -248,7 +276,7 @@ class p0f:
                     self.output.append(self.cool_print("Browser", str(self.get_browser(browsers))))
 
                     # add system info to self.output based on the user agent
-                    system_info = user_agent_unsplitted.split("(")[1].split(")")[0].replace("Windows NT 10.0", "Windows 10").replace("Win64", "64 bit platform").replace("Win32", "32 bit platform").replace("X11; Ubuntu; Linux x86_64", "Ubuntu")
+                    system_info = user_agent_unsplitted.split("(")[1].split(")")[0].replace("Windows NT 10.0", "Windows 10").replace("Windows NT 6.3", "Windows 8.1").replace("Win64", "64 bit platform").replace("Win32", "32 bit platform").replace("X11; Ubuntu; Linux x86_64", "Ubuntu")
                     self.output.append(self.cool_print('System Info', system_info))
 
         self.output.append("`....\n")
