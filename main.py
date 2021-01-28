@@ -150,7 +150,7 @@ class p0f:
         try:
             self.parse_packet(packet)
         except Exception as e:
-            print(f"An error occured while analising a packet.")
+            print(f"An error occured while analising a packet.\n{e}")
 
     def find_geoip(self, src):
         # call geo ip http server
@@ -276,8 +276,11 @@ class p0f:
                     self.output.append(self.cool_print("Browser", str(self.get_browser(browsers))))
 
                     # add system info to self.output based on the user agent
-                    system_info = user_agent_unsplitted.split("(")[1].split(")")[0].replace("Windows NT 10.0", "Windows 10").replace("Windows NT 6.3", "Windows 8.1").replace("Win64", "64 bit platform").replace("Win32", "32 bit platform").replace("X11; Ubuntu; Linux x86_64", "Ubuntu")
-                    self.output.append(self.cool_print('System Info', system_info))
+                    try:
+                        system_info = user_agent_unsplitted.split("(")[1].split(")")[0].replace("Windows NT 10.0", "Windows 10").replace("Windows NT 6.3", "Windows 8.1").replace("Win64", "64 bit platform").replace("Win32", "32 bit platform").replace("X11; Ubuntu; Linux x86_64", "Ubuntu")
+                        self.output.append(self.cool_print('System Info', system_info))
+                    except:
+                        pass
 
         self.output.append("`....\n")
         self.output = [line for line in self.output if line != "" and line != None]
