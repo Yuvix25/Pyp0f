@@ -1,3 +1,6 @@
+# Authors: Yuval Rosen and Omri Hulaty
+
+
 import json
 import logging
 import statistics
@@ -112,10 +115,13 @@ class p0f:
         # common ttls (to find out the initial ttl)
         self.ttl_options = (32,64,128,255)
 
-    def start_sniffing(self):
+    def start_sniffing(self, interface=None):
         # start sniffing only the tcp packets, evey packet captured is being sent to the packet_callback function 
         print("started")
-        sniff(filter="tcp",prn=self.packet_callback)
+        if interface == None:
+            sniff(filter="tcp",prn=self.packet_callback)
+        else:
+            sniff(filter="tcp",prn=self.packet_callback, iface=interface)
     
     def get_browser(self, agents):
         self.agents = agents
@@ -153,7 +159,7 @@ class p0f:
         try:
             self.parse_packet(packet)
         except Exception as e:
-            print(f"An error occured while analising a packet.\n{e}")
+            print(f"An error occured while analysing a packet.\n{e}")
 
     def find_geoip(self, src):
         # call geo ip http server
@@ -266,16 +272,16 @@ class p0f:
 
         # if the packet is sent to an http server we can extract the metadata from the header
         payload = str(bytes(packet[TCP].payload))
-        if "User-Agent" in payload:
+        
+        if "http" in payload.lower():
             # extracting the "user agent" argument from the header if exist
             user_agent_unsplitted = payload[payload.find("User-Agent"):payload.find("\\r\\n", payload.find("User-Agent"))]
             user_agent = user_agent_unsplitted.split()[1:]
-            # add to self.output the browser based on the user agent 
+            # add to self.output the browser based on the user agent
+            self.output.append("| <--------------> Data From HTTP <-------------->")
             if user_agent != []:
-                self.output.append("| <--------------> Data From HTTP <-------------->")
                 if len(user_agent) > 1:
                     browsers = user_agent_unsplitted.split(")")[-1].split()
-                    print(browsers)
 
                     self.output.append(self.cool_print("Browser", str(self.get_browser(browsers))))
 
@@ -291,8 +297,8 @@ class p0f:
                     else:
                         self.output.append(self.cool_print('Browser', user_agent[0]))
         
-        if self.output[-1] == "| <--------------> Data From HTTP <-------------->":
-            self.output = self.output[:-1]
+        # if self.output[-1] == "| <--------------> Data From HTTP <-------------->":
+        #     self.output = self.output[:-1]
 
         self.output.append("`....\n")
         self.output = [line for line in self.output if line != "" and line != None]
@@ -329,4 +335,7 @@ class p0f:
     
 if __name__ ==  "__main__":
     _p0f = p0f()
-    _p0f.start_sniffing()
+    _p0f.start_sniffing() # if on wifi use _p0f.start_sniffing("Wi-Fi"), or "wifi0" or however your wifi interface is named on your computer (you can see that in wireshark)
+
+
+# Sometimes it may take some time for packets to be recieved and fully processed, so please be patient
